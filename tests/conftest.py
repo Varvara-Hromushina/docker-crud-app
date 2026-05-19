@@ -6,29 +6,21 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 
 from src.main import app
 from src.models import User
-from src.database import Base
-
-
-DATABASE_URL = os.environ.get("TEST_DATABASE_URL", "sqlite+aiosqlite:///./test.db")
-
-test_engine = create_async_engine(DATABASE_URL, echo=True)
-TestAsyncSessionLocal = async_sessionmaker(
-    test_engine, class_=AsyncSession, expire_on_commit=False
-)
-
+from src.database import Base, engine
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_db():
-    async with test_engine.begin() as conn:
+    async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
-    async with test_engine.begin() as conn:
+    async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 
 
 @pytest_asyncio.fixture(scope='function')
 async def db() -> AsyncSession:
-    async with TestAsyncSessionLocal() as session:
+    from src.database import AsyncSessionLocal
+    async with AsyncSessionLocal() as session:
         yield session
 
 
