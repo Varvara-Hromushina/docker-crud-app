@@ -1,18 +1,15 @@
 import os
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
-from sqlalchemy import text
+from sqlalchemy import text, Column, Integer, String
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import declarative_base
 
 from src.main import app
 
-Base = declarative_base()
+TestBase = declarative_base()
 
-
-from sqlalchemy import Column, Integer, String
-
-class TestUser(Base):
+class TestUser(TestBase):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False)
@@ -28,10 +25,10 @@ TestAsyncSessionLocal = async_sessionmaker(
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_db():
     async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(TestBase.metadata.create_all)
     yield
     async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(TestBase.metadata.drop_all)
 
 
 @pytest_asyncio.fixture(scope='function')
