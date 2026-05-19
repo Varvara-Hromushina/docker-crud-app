@@ -1,36 +1,13 @@
-# STAGE 1: Builder
-FROM python:3.11-slim AS builder
-
+FROM python:3.10 as builder
 WORKDIR /app
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
-
 COPY pyproject.toml .
+RUN pip install --user ".[test]"
 
-RUN pip install --no-cache-dir --user ".[test]"
-
-# STAGE 2: Runtime
-FROM python:3.11-slim
-
+FROM python:3.10-slim
 WORKDIR /app
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq5 \
-    && rm -rf /var/lib/apt/lists/*
-
 COPY --from=builder /root/.local /root/.local
-
 COPY src/ ./src/
 COPY tests/ ./tests/
-
 ENV PATH=/root/.local/bin:$PATH
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONPATH=/app
-ENV PORT=60080
-
-EXPOSE ${PORT}
-
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "60080"]
+ENTRYPOINT ["uvicorn"]
+CMD ["src.main:app", "--host", "0.0.0.0", "--port", "8108"]

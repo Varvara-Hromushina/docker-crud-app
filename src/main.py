@@ -1,14 +1,11 @@
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from . import models, schemas
-from .database import init_db, get_db
+from src import models, schemas
+from src.database import init_db, get_db
 
 app = FastAPI()
 
-@app.get("/health")
-async def health_check():
-    return {"status": "ok"}
 
 @app.on_event("startup")
 async def startup():
