@@ -6,6 +6,10 @@ from src.database import init_db, get_db
 
 app = FastAPI()
 
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
 
 @app.on_event("startup")
 async def startup():

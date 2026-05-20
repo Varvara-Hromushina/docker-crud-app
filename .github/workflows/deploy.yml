@@ -1,13 +1,13 @@
-
 name: CI-CD Pipeline
 
 on:
   push:
     branches:
-      - master
+      - main
 
 env:
   IMAGE_NAME: ghcr.io/Varvara-Hromushina/docker-crud-app
+  APP_PORT: 8041
 
 jobs:
   build-test-push:
@@ -19,7 +19,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:15
+        image: postgres:15-alpine
         env:
           POSTGRES_USER: kubsu
           POSTGRES_PASSWORD: kubsu
@@ -39,16 +39,34 @@ jobs:
       - name: Login to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - name: Build image
-        run: docker build -t $IMAGE_NAME:latest .
-
-      - name: Run tests
+      - name: Build and test
         run: |
+          docker build -t $IMAGE_NAME:latest .
           docker run --rm \
             --network host \
-            --entrypoint python \
             -e DATABASE_URL=postgresql+psycopg://kubsu:kubsu@127.0.0.1:5432/kubsu \
-            $IMAGE_NAME:latest -m pytest tests/ -v
+            --entrypoint pytest \
+            $IMAGE_NAME:latest tests/ -v
 
-      - name: Push image to GHCR
+      - name: Push to GHCR
         run: docker push $IMAGE_NAME:latest
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v0.1.5
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker pull ${{ env.IMAGE_NAME }}:latest
+            docker stop crud-app || true
+            docker rm crud-app || true
+            docker run -d \
+              --name crud-app \
+              -p ${{ env.APP_PORT }}:${{ env.APP_PORT }} \
+              --restart=always \
+              ${{ env.IMAGE_NAME }}:latest
+            sleep 5
+            docker ps | grep crud-app
+            curl -f http://localhost:${{ env.APP_PORT }}/health
