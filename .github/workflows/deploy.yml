@@ -54,32 +54,32 @@ jobs:
       - name: Push image to GHCR
         run: docker push $IMAGE_NAME:latest
 
-deploy:
-  runs-on: ubuntu-latest
-  needs: build-test-push
-  if: github.ref == 'refs/heads/main'
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-test-push
+    if: github.ref == 'refs/heads/main'
 
-  steps:
-    - name: Deploy to server
-      uses: appleboy/ssh-action@v0.1.5
-      with:
-        host: 212.192.134.135
-        username: ${{ secrets.DEPLOY_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        script: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
+    steps:
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v0.1.5
+        with:
+          host: 212.192.134.135
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
 
-          podman pull ghcr.io/varvara-hromushina/docker-crud-app:latest
+            podman pull ghcr.io/varvara-hromushina/docker-crud-app:latest
 
-          podman stop myapp || true
-          podman rm myapp || true
+            podman stop myapp || true
+            podman rm myapp || true
 
-          podman run -d \
-            --name myapp \
-            --network host \
-            -e DATABASE_URL=postgresql+psycopg://kubsu:kubsu@localhost:5432/kubsu \
-            ghcr.io/varvara-hromushina/docker-crud-app:latest
+            podman run -d \
+              --name myapp \
+              --network host \
+              -e DATABASE_URL=postgresql+psycopg://kubsu:kubsu@localhost:5432/kubsu \
+              ghcr.io/varvara-hromushina/docker-crud-app:latest
 
-          sleep 5
-          podman ps | grep myapp
-          curl http://localhost:8041/health
+            sleep 5
+            podman ps | grep myapp
+            curl http://localhost:8041/health
