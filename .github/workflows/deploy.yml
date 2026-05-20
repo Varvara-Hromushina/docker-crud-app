@@ -55,7 +55,7 @@ jobs:
         run: docker push $IMAGE_NAME:latest
 
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: build-test-push
     if: github.ref == 'refs/heads/main'
 
