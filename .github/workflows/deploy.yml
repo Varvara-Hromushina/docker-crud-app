@@ -11,7 +11,6 @@ env:
 jobs:
   build-test-push:
     runs-on: ubuntu-latest
-
     permissions:
       contents: read
       packages: write
@@ -32,54 +31,43 @@ jobs:
           --health-retries 5
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
+      - uses: actions/checkout@v3
       - name: Login to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
       - name: Build test image
         run: docker build --target test -t $IMAGE_NAME:test .
-
       - name: Run tests
         run: |
           docker run --rm \
             --network host \
             -e DATABASE_URL=postgresql+psycopg://kubsu:kubsu@localhost:5432/kubsu \
             $IMAGE_NAME:test
-
       - name: Build runtime image
         run: docker build -t $IMAGE_NAME:latest .
-
       - name: Push image to GHCR
         run: docker push $IMAGE_NAME:latest
 
   deploy:
-    runs-on: self-hosted
     needs: build-test-push
+    runs-on: self-hosted
     if: github.ref == 'refs/heads/main'
-
     steps:
-      - name: Deploy to server
-        uses: appleboy/ssh-action@v0.1.5
-        with:
-          host: 212.192.134.135
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
-
-            podman pull ghcr.io/varvara-hromushina/docker-crud-app:latest
-
-            podman stop myapp || true
-            podman rm myapp || true
-
-            podman run -d \
-              --name myapp \
-              --network host \
-              -e DATABASE_URL=postgresql+psycopg://kubsu:kubsu@localhost:5432/kubsu \
-              ghcr.io/varvara-hromushina/docker-crud-app:latest
-
-            sleep 5
-            podman ps | grep myapp
-            curl http://localhost:8041/health
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Pull latest image
+        run: podman pull ${{ env.IMAGE_NAME }}:latest
+      - name: Stop old container
+        run: |
+          podman stop myapp || true
+          podman rm myapp || true
+      - name: Run new container
+        run: |
+          podman run -d \
+            --name myapp \
+            --network host \
+            -e DATABASE_URL=postgresql+psycopg://kubsu:kubsu@localhost:5432/kubsu \
+            ${{ env.IMAGE_NAME }}:latest
+      - name: Check health
+        run: |
+          sleep 5
+          curl http://localhost:8041/health
