@@ -6,7 +6,7 @@ on:
       - main
 
 env:
-  IMAGE_NAME: ghcr.io/Varvara-Hromushina/docker-crud-app
+  IMAGE_NAME: ghcr.io/varvara-hromushina/docker-crud-app
   APP_PORT: 8041
 
 jobs:
