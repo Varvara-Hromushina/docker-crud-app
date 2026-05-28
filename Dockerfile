@@ -1,9 +1,8 @@
 # Stage 1: build
-FROM python:3.12-slim AS builder
+FROM python:3.12 AS builder
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml ./
 COPY src ./src
@@ -12,11 +11,10 @@ RUN pip install --upgrade pip && \
     pip wheel . -w /wheels
 
 # Stage 2.1: test 
-FROM python:3.12-slim AS test
+FROM python:3.12 AS test
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml ./
 COPY src ./src
@@ -32,7 +30,7 @@ ENV PYTHONPATH=/app:$PYTHONPATH
 ENTRYPOINT ["sh", "-c"]
 CMD ["pytest"]
 # Stage 2.2: runtime
-FROM python:3.12-slim
+FROM python:3.12
 
 WORKDIR /app
 
