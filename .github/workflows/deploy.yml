@@ -39,11 +39,13 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install -e .[test]
+          pip install -e .
+          pip install pytest pytest-asyncio httpx
       
       - name: Run tests
         env:
           DATABASE_URL: postgresql+psycopg://kubsu:kubsu@localhost:5432/kubsu
+          PYTHONPATH: .
         run: |
           pytest tests/ -v
       
