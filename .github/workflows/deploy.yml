@@ -31,19 +31,25 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      
       - name: Login to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-      - name: Build test image
-        run: docker build --target test -t $IMAGE_NAME:test .
-      - name: Run tests
+      
+      - name: Install dependencies
         run: |
-          docker run --rm \
-            --network host \
-            -e DATABASE_URL=postgresql+psycopg://kubsu:kubsu@localhost:5432/kubsu \
-            $IMAGE_NAME:test
-      - name: Build runtime image
+          pip install --upgrade pip
+          pip install -e .[test]
+      
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql+psycopg://kubsu:kubsu@localhost:5432/kubsu
+        run: |
+          pytest tests/ -v
+      
+      - name: Build image
         run: docker build -t $IMAGE_NAME:latest .
+      
       - name: Push image to GHCR
         run: docker push $IMAGE_NAME:latest
 
@@ -54,12 +60,15 @@ jobs:
     steps:
       - name: Login to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
+      
       - name: Pull latest image
         run: podman pull ${{ env.IMAGE_NAME }}:latest
+      
       - name: Stop old container
         run: |
           podman stop myapp || true
           podman rm myapp || true
+      
       - name: Run new container
         run: |
           podman run -d \
@@ -67,6 +76,7 @@ jobs:
             --network host \
             -e DATABASE_URL=postgresql+psycopg://kubsu:kubsu@localhost:5432/kubsu \
             ${{ env.IMAGE_NAME }}:latest
+      
       - name: Check health
         run: |
           sleep 5
