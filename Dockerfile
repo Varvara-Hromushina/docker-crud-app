@@ -1,38 +1,27 @@
 # Stage 1: build
-FROM python:3.12 AS builder
+FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml ./
 COPY src ./src
 
 RUN pip install --upgrade pip && \
-    pip wheel . -w /wheels
+    pip wheel --no-cache-dir . -w /wheels
 
-# Stage 2.1: test 
-FROM python:3.12 AS test
-
-WORKDIR /app
-
-
-COPY pyproject.toml ./
-COPY src ./src
-COPY tests ./tests
-
-RUN chmod -R a+r /app && \
-    find /app -type d -exec chmod a+x {} \;
-
-RUN pip install --no-cache-dir .[test]
-
-ENV PYTHONPATH=/app:$PYTHONPATH
-
-ENTRYPOINT ["sh", "-c"]
-CMD ["pytest"]
-# Stage 2.2: runtime
-FROM python:3.12
+# Stage 2: runtime
+FROM python:3.12-slim
 
 WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /wheels /wheels
 RUN pip install --no-cache-dir /wheels/*
